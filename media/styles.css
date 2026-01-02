@@ -1,0 +1,141 @@
+:root {
+    --container-paddding: 20px;
+    --background: var(--vscode-editor-background);
+    --foreground: var(--vscode-editor-foreground);
+    --button-bg: var(--vscode-button-background);
+    --button-fg: var(--vscode-button-foreground);
+    --button-hover: var(--vscode-button-hoverBackground);
+}
+
+body {
+    padding: 0;
+    margin: 0;
+    color: var(--foreground);
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+}
+
+nav {
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    background: var(--vscode-sideBar-background);
+    border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border);
+}
+
+nav button {
+    background: transparent;
+    border: none;
+    color: var(--foreground);
+    cursor: pointer;
+    padding: 5px 10px;
+}
+
+nav button:hover {
+    background: var(--vscode-list-hoverBackground);
+}
+
+main {
+    padding: 10px;
+}
+
+/* Challenge List */
+.challenge-item {
+    padding: 10px;
+    margin-bottom: 8px;
+    background: var(--vscode-editor-background);
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.challenge-item:hover {
+    background: var(--vscode-list-hoverBackground);
+}
+
+.challenge-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.difficulty-badge {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.difficulty-badge.easy { background-color: #cd7f32; box-shadow: 0 0 5px #cd7f32; } /* Bronze */
+.difficulty-badge.medium { background-color: #c0c0c0; box-shadow: 0 0 5px #c0c0c0; } /* Silver */
+.difficulty-badge.hard { background-color: #ffd700; box-shadow: 0 0 5px #ffd700; } /* Gold */
+
+.badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    text-transform: uppercase;
+}
+.badge.easy { background: #cd7f32; color: #000; }
+.badge.medium { background: #c0c0c0; color: #000; }
+.badge.hard { background: #ffd700; color: #000; }
+
+/* Challenge View */
+.code-editor-container textarea {
+    width: 100%;
+    height: 300px;
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border);
+    font-family: 'Courier New', Courier, monospace;
+    padding: 10px;
+    resize: vertical;
+}
+
+.actions {
+    margin-top: 10px;
+}
+
+button#run-btn {
+    background: var(--button-bg);
+    color: var(--button-fg);
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+}
+
+button#run-btn:hover {
+    background: var(--button-hover);
+}
+
+.success {
+    color: #4caf50;
+    margin-top: 10px;
+}
+
+.error {
+    color: #f44336;
+    margin-top: 10px;
+    white-space: pre-wrap;
+}
+
+/* Account View */
+.stat-card {
+    background: var(--vscode-editor-background);
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 4px;
+}
+
+.stat-card h3 {
+    margin: 0 0 5px 0;
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
+.stat-card p {
+    margin: 0;
+    font-size: 1.5em;
+    font-weight: bold;
+}
