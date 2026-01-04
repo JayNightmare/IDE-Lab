@@ -66,9 +66,24 @@ main {
     display: inline-block;
 }
 
-.difficulty-badge.easy { background-color: #cd7f32; box-shadow: 0 0 5px #cd7f32; } /* Bronze */
-.difficulty-badge.medium { background-color: #c0c0c0; box-shadow: 0 0 5px #c0c0c0; } /* Silver */
-.difficulty-badge.hard { background-color: #ffd700; box-shadow: 0 0 5px #ffd700; } /* Gold */
+.difficulty-badge.easy {
+    background-color: #cd7f32;
+    box-shadow: 0 0 5px #cd7f32;
+}
+
+/* Bronze */
+.difficulty-badge.medium {
+    background-color: #c0c0c0;
+    box-shadow: 0 0 5px #c0c0c0;
+}
+
+/* Silver */
+.difficulty-badge.hard {
+    background-color: #ffd700;
+    box-shadow: 0 0 5px #ffd700;
+}
+
+/* Gold */
 
 .badge {
     padding: 2px 6px;
@@ -76,9 +91,32 @@ main {
     font-size: 0.8em;
     text-transform: uppercase;
 }
-.badge.easy { background: #cd7f32; color: #000; }
-.badge.medium { background: #c0c0c0; color: #000; }
-.badge.hard { background: #ffd700; color: #000; }
+
+.badge.easy {
+    background: #cd7f32;
+    color: #000;
+}
+
+.badge.medium {
+    background: #c0c0c0;
+    color: #000;
+}
+
+.badge.hard {
+    background: #ffd700;
+    color: #000;
+}
+
+/* Language Badge */
+.language-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    font-family: monospace;
+    background: var(--vscode-badge-background);
+    color: var(--vscode-badge-foreground);
+    margin-left: 8px;
+}
 
 /* Challenge View */
 .code-editor-container textarea {
@@ -138,4 +176,50 @@ button#run-btn:hover {
     margin: 0;
     font-size: 1.5em;
     font-weight: bold;
+}
+
+/* Editor View Specifics */
+.editor-view {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0 20px;
+    box-sizing: border-box;
+}
+
+.editor-view header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+}
+
+.code-editor-container.full-height {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+}
+
+.code-editor-container.full-height textarea {
+    height: 100%;
+    resize: none;
+    /* No manual resize in full view */
+    border: none;
+    outline: none;
+    padding: 15px;
+    box-sizing: border-box;
+}
+
+.primary-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px;
+    background: var(--button-bg);
+    color: var(--button-fg);
+    border: none;
+    cursor: pointer;
+}
+
+.primary-btn:hover {
+    background: var(--button-hover);
 }

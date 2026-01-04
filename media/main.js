@@ -28,20 +28,6 @@ window.addEventListener("message", (event) => {
             state.view = "challenge";
             render();
             break;
-        case "executionResult":
-            const statusEl = document.getElementById("status-message");
-            if (statusEl) {
-                statusEl.innerText = message.message;
-                statusEl.className = message.success ? "success" : "error";
-            }
-            // Update local state if success
-            if (message.success) {
-                if (!state.progress[message.challengeId])
-                    state.progress[message.challengeId] = {};
-                state.progress[message.challengeId].completed = true;
-                state.progress[message.challengeId].inProgress = false;
-            }
-            break;
     }
 });
 
@@ -54,10 +40,18 @@ function render() {
 
     // Navigation Bar
     const nav = document.createElement("nav");
-    nav.innerHTML = `
-        <button onclick="navigate('home')">Home</button>
-        <button onclick="navigate('account')">Account</button>
-    `;
+
+    // Create buttons safely with event listeners
+    const homeBtn = document.createElement("button");
+    homeBtn.textContent = "Home";
+    homeBtn.onclick = () => navigate("home");
+
+    const accountBtn = document.createElement("button");
+    accountBtn.textContent = "Account";
+    accountBtn.onclick = () => navigate("account");
+
+    nav.appendChild(homeBtn);
+    nav.appendChild(accountBtn);
     app.appendChild(nav);
 
     const content = document.createElement("main");
@@ -101,45 +95,29 @@ function renderHome(container) {
 function renderChallenge(container) {
     if (!state.activeChallenge) return;
     const c = state.activeChallenge;
-    const p = state.progress[c.id];
 
     const wrapper = document.createElement("div");
     wrapper.className = "challenge-view";
 
+    // Description only view
     wrapper.innerHTML = `
-        <h2>${c.title} <span class="badge ${c.difficulty}">${
-        c.difficulty
-    }</span></h2>
+        <h2>
+            ${c.title} 
+            <span class="badge ${c.difficulty}">${c.difficulty}</span>
+            <span class="language-badge">JavaScript</span>
+        </h2>
         <p class="description">${c.description}</p>
         
-        <div class="code-editor-container">
-            <textarea id="code-input" spellcheck="false">${
-                p?.code || c.starterCode
-            }</textarea>
-        </div>
-        
         <div class="actions">
-            <button id="run-btn">Run Code</button>
+            <button id="open-editor-btn" class="primary-btn">Open Editor</button>
         </div>
-        
-        <div id="status-message"></div>
     `;
 
     container.appendChild(wrapper);
 
-    // Add event listeners
-    document.getElementById("run-btn").onclick = () => {
-        const code = document.getElementById("code-input").value;
-        vscode.postMessage({ type: "runCode", challengeId: c.id, code });
-    };
-
-    document.getElementById("code-input").oninput = (e) => {
-        // Auto-save debounce could go here, or save on blur
-        vscode.postMessage({
-            type: "saveProgress",
-            id: c.id,
-            code: e.target.value,
-        });
+    // Open Editor Button
+    document.getElementById("open-editor-btn").onclick = () => {
+        vscode.postMessage({ type: "openEditor", id: c.id });
     };
 }
 
@@ -180,7 +158,6 @@ function navigate(view) {
     render();
 }
 
-// Make navigate global
 window.navigate = navigate;
 
 function getPoints(difficulty) {

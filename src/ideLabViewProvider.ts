@@ -5,6 +5,7 @@ import { ProgressManager } from "./data/progressManager";
 export class IDELabViewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = "ide-lab.sidebar";
     private _view?: vscode.WebviewView;
+    private _editorPanel?: vscode.WebviewPanel;
     private progressManager: ProgressManager;
 
     constructor(private readonly _extensionUri: vscode.Uri) {
@@ -55,6 +56,61 @@ export class IDELabViewProvider implements vscode.WebviewViewProvider {
                     }
                     break;
                 }
+                case "openEditor": {
+                    const challenge = challenges.find((c) => c.id === data.id);
+                    if (challenge) {
+                        this.createOrShowEditorPanel(challenge);
+                    }
+                    break;
+                }
+            }
+        });
+    }
+
+    private async createOrShowEditorPanel(challenge: any) {
+        const column = vscode.window.activeTextEditor
+            ? vscode.ViewColumn.Beside
+            : vscode.ViewColumn.One;
+
+        // If we already have a panel, show it.
+        // Note: In a real app we might want one panel per challenge or a tabbed system.
+        // For now, we'll reuse the single panel or replace it.
+        if (this._editorPanel) {
+            this._editorPanel.reveal(column);
+            // Update the content for the new challenge
+            this._updateEditorPanel(challenge);
+            return;
+        }
+
+        // Create a new panel
+        this._editorPanel = vscode.window.createWebviewPanel(
+            "ideLabEditor",
+            `IDE Lab: ${challenge.title}`,
+            column,
+            {
+                enableScripts: true,
+                localResourceRoots: [this._extensionUri],
+                retainContextWhenHidden: true,
+            }
+        );
+
+        this._editorPanel.webview.html = this._getHtmlForEditor(
+            this._editorPanel.webview,
+            challenge
+        );
+
+        // Listen for disposal
+        this._editorPanel.onDidDispose(
+            () => {
+                this._editorPanel = undefined;
+            },
+            null,
+            []
+        );
+
+        // Handle messages from the editor panel
+        this._editorPanel.webview.onDidReceiveMessage(async (data) => {
+            switch (data.type) {
                 case "saveProgress": {
                     await this.progressManager.updateProgress(data.id, {
                         code: data.code,
@@ -74,7 +130,7 @@ export class IDELabViewProvider implements vscode.WebviewViewProvider {
                         { code: data.code }
                     );
 
-                    // Execute code (Primitive validation)
+                    // Execute code
                     const result = this.validateCode(data.code, challenge);
 
                     if (result.success) {
@@ -89,13 +145,24 @@ export class IDELabViewProvider implements vscode.WebviewViewProvider {
                                 challenge.difficulty
                             )} points`
                         );
+
+                        // Update sidebar progress too
+                        if (this._view) {
+                            const progress =
+                                await this.progressManager.getAllProgress();
+                            this._view.webview.postMessage({
+                                type: "challenges",
+                                challenges,
+                                progress,
+                            });
+                        }
                     } else {
                         vscode.window.showErrorMessage(
                             `Test Failed: ${result.message}`
                         );
                     }
 
-                    webviewView.webview.postMessage({
+                    this._editorPanel?.webview.postMessage({
                         type: "executionResult",
                         success: result.success,
                         message: result.message,
@@ -104,6 +171,22 @@ export class IDELabViewProvider implements vscode.WebviewViewProvider {
                     break;
                 }
             }
+        });
+
+        // Initialize state
+        this._updateEditorPanel(challenge);
+    }
+
+    private async _updateEditorPanel(challenge: any) {
+        if (!this._editorPanel) return;
+
+        this._editorPanel.title = `IDE Lab: ${challenge.title}`;
+        const progress = await this.progressManager.getProgress(challenge.id);
+
+        this._editorPanel.webview.postMessage({
+            type: "init",
+            challenge: challenge,
+            progress: progress,
         });
     }
 
@@ -125,17 +208,9 @@ export class IDELabViewProvider implements vscode.WebviewViewProvider {
         challenge: any
     ): { success: boolean; message: string } {
         try {
-            // WARNING: This is a simple eval-based runner for demonstration/MVP.
-            // In a real production environment, this should be sandboxed.
-            // We wrap it in a function context to avoid polluting global scope slightly.
-
             for (const testCase of challenge.testCases) {
                 const { input, expected } = testCase;
-                // Construct a function runner
-                // We expect the user to define the function name as specified in starterCode
-                // e.g. twoSum(nums, target)
 
-                // Extract function name from starter code
                 const functionNameMatch =
                     challenge.starterCode.match(/function\s+(\w+)/);
                 const functionName = functionNameMatch
@@ -149,8 +224,6 @@ export class IDELabViewProvider implements vscode.WebviewViewProvider {
                     };
                 }
 
-                // Create a runner string
-                // We basically eval the user code, then call the function with input
                 const runnerScript = `
                     ${userCode}
                     return ${functionName}(...${JSON.stringify(input)});
@@ -159,8 +232,6 @@ export class IDELabViewProvider implements vscode.WebviewViewProvider {
                 const run = new Function(runnerScript);
                 let result = run();
 
-                // Compare result with expected
-                // Simple JSON stringify comparison for arrays/objects
                 if (JSON.stringify(result) !== JSON.stringify(expected)) {
                     return {
                         success: false,
@@ -172,12 +243,14 @@ export class IDELabViewProvider implements vscode.WebviewViewProvider {
                     };
                 }
             }
+
             return { success: true, message: "All test cases passed!" };
         } catch (e: any) {
             return { success: false, message: e.toString() };
         }
     }
 
+    // Sidebar HTML
     private _getHtmlForWebview(webview: vscode.Webview) {
         const scriptUri = webview.asWebviewUri(
             vscode.Uri.joinPath(this._extensionUri, "media", "main.js")
@@ -185,7 +258,6 @@ export class IDELabViewProvider implements vscode.WebviewViewProvider {
         const styleUri = webview.asWebviewUri(
             vscode.Uri.joinPath(this._extensionUri, "media", "styles.css")
         );
-        // Use a nonce to only allow specific scripts to be run
         const nonce = getNonce();
 
         return `<!DOCTYPE html>
@@ -196,6 +268,32 @@ export class IDELabViewProvider implements vscode.WebviewViewProvider {
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <link href="${styleUri}" rel="stylesheet">
                 <title>IDE Lab</title>
+            </head>
+            <body>
+                <div id="app"></div>
+                <script nonce="${nonce}" src="${scriptUri}"></script>
+            </body>
+            </html>`;
+    }
+
+    // Editor Panel HTML
+    private _getHtmlForEditor(webview: vscode.Webview, challenge: any) {
+        const scriptUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(this._extensionUri, "media", "editor.js")
+        );
+        const styleUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(this._extensionUri, "media", "styles.css")
+        );
+        const nonce = getNonce();
+
+        return `<!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <link href="${styleUri}" rel="stylesheet">
+                <title>IDE Lab Editor</title>
             </head>
             <body>
                 <div id="app"></div>
