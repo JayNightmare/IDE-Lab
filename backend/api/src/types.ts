@@ -11,6 +11,3 @@ export interface Challenge {
     starterCode: string;
     testCases: TestCase[];
 }
-
-// Challenges are now fetched from the API
-export const challenges: Challenge[] = [];

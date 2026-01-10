@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
-import { challenges } from "./data/challenges";
+import { Challenge } from "./data/challenges";
+import { ChallengeService } from "./services/challengeService";
 import { ProgressManager } from "./data/progressManager";
 
 export class IDELabViewProvider implements vscode.WebviewViewProvider {
@@ -29,35 +30,47 @@ export class IDELabViewProvider implements vscode.WebviewViewProvider {
         webviewView.webview.onDidReceiveMessage(async (data) => {
             switch (data.type) {
                 case "getChallenges": {
-                    const progress =
-                        await this.progressManager.getAllProgress();
-                    webviewView.webview.postMessage({
-                        type: "challenges",
-                        challenges,
-                        progress,
-                    });
+                    await this.fetchAndSendChallenges(webviewView);
+                    break;
+                }
+                case "refresh": {
+                    // Handle refresh request
+                    await this.fetchAndSendChallenges(webviewView);
                     break;
                 }
                 case "getChallenge": {
-                    const challenge = challenges.find((c) => c.id === data.id);
-                    const progress = await this.progressManager.getProgress(
-                        data.id
-                    );
-                    if (challenge) {
-                        // Mark as opened/in-progress if not already handled outside
-                        await this.progressManager.updateProgress(data.id, {
-                            inProgress: true,
-                        });
-                        webviewView.webview.postMessage({
-                            type: "showChallenge",
-                            challenge,
-                            progress,
-                        });
+                    try {
+                        const challenge = await ChallengeService.getChallenge(
+                            data.id
+                        );
+                        if (challenge) {
+                            const progress =
+                                await this.progressManager.getProgress(data.id);
+                            // Mark as opened/in-progress if not already handled outside
+                            await this.progressManager.updateProgress(data.id, {
+                                inProgress: true,
+                            });
+                            webviewView.webview.postMessage({
+                                type: "showChallenge",
+                                challenge,
+                                progress,
+                            });
+                        } else {
+                            vscode.window.showErrorMessage(
+                                "Challenge not found"
+                            );
+                        }
+                    } catch (error) {
+                        vscode.window.showErrorMessage(
+                            "Failed to load challenge: " + error
+                        );
                     }
                     break;
                 }
                 case "openEditor": {
-                    const challenge = challenges.find((c) => c.id === data.id);
+                    const challenge = await ChallengeService.getChallenge(
+                        data.id
+                    );
                     if (challenge) {
                         this.createOrShowEditorPanel(challenge);
                     }
@@ -65,6 +78,24 @@ export class IDELabViewProvider implements vscode.WebviewViewProvider {
                 }
             }
         });
+    }
+
+    private async fetchAndSendChallenges(webviewView: vscode.WebviewView) {
+        try {
+            const challenges = await ChallengeService.getChallenges();
+            const progress = await this.progressManager.getAllProgress();
+            webviewView.webview.postMessage({
+                type: "challenges",
+                challenges,
+                progress,
+            });
+        } catch (error) {
+            webviewView.webview.postMessage({
+                type: "error",
+                message:
+                    "Failed to load challenges. Please check your internet connection.",
+            });
+        }
     }
 
     private async createOrShowEditorPanel(challenge: any) {
@@ -119,9 +150,10 @@ export class IDELabViewProvider implements vscode.WebviewViewProvider {
                     break;
                 }
                 case "runCode": {
-                    const challenge = challenges.find(
-                        (c) => c.id === data.challengeId
+                    const challenge = await ChallengeService.getChallenge(
+                        data.challengeId
                     );
+                    // eslint-disable-next-line curly
                     if (!challenge) return;
 
                     // Save code first
@@ -148,13 +180,8 @@ export class IDELabViewProvider implements vscode.WebviewViewProvider {
 
                         // Update sidebar progress too
                         if (this._view) {
-                            const progress =
-                                await this.progressManager.getAllProgress();
-                            this._view.webview.postMessage({
-                                type: "challenges",
-                                challenges,
-                                progress,
-                            });
+                            // Re-fetch to ensure sync (optional, but safe)
+                            this.fetchAndSendChallenges(this._view);
                         }
                     } else {
                         vscode.window.showErrorMessage(
@@ -178,6 +205,7 @@ export class IDELabViewProvider implements vscode.WebviewViewProvider {
     }
 
     private async _updateEditorPanel(challenge: any) {
+        // eslint-disable-next-line curly
         if (!this._editorPanel) return;
 
         this._editorPanel.title = `IDE Lab: ${challenge.title}`;

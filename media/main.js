@@ -2,10 +2,11 @@ const vscode = acquireVsCodeApi();
 
 // State
 let state = {
-    view: "home", // 'home' | 'challenge' | 'account'
+    view: "home", // 'home' | 'challenge' | 'account' | 'error'
     challenges: [],
     progress: {},
     activeChallenge: null,
+    errorMessage: "",
 };
 
 // DOM Elements
@@ -18,6 +19,7 @@ window.addEventListener("message", (event) => {
         case "challenges":
             state.challenges = message.challenges;
             state.progress = message.progress;
+            state.view = "home"; // Reset to home on success if we were in error
             render();
             break;
         case "showChallenge":
@@ -26,6 +28,11 @@ window.addEventListener("message", (event) => {
                 state.progress[message.challenge.id] = message.progress;
             }
             state.view = "challenge";
+            render();
+            break;
+        case "error":
+            state.errorMessage = message.message;
+            state.view = "error";
             render();
             break;
     }
@@ -63,10 +70,37 @@ function render() {
         renderChallenge(content);
     } else if (state.view === "account") {
         renderAccount(content);
+    } else if (state.view === "error") {
+        renderError(content);
     }
 }
 
+function renderError(container) {
+    container.innerHTML = `
+        <div class="error-view">
+            <h3>⚠️ Error</h3>
+            <p>${state.errorMessage}</p>
+            <button id="refresh-btn" class="primary-btn">Refresh</button>
+        </div>
+    `;
+
+    document.getElementById("refresh-btn").onclick = () => {
+        vscode.postMessage({ type: "refresh" });
+        // Optional: Show loading state here
+        const btn = document.getElementById("refresh-btn");
+        if (btn) {
+            btn.textContent = "Loading...";
+            btn.disabled = true;
+        }
+    };
+}
+
 function renderHome(container) {
+    if (state.challenges.length === 0) {
+        container.innerHTML = "<p>No challenges available.</p>";
+        return;
+    }
+
     const list = document.createElement("div");
     list.className = "challenge-list";
 
